@@ -16,7 +16,6 @@ EnemyDetection::EnemyDetection(){
     ultraArray->setModules(1,triggerPins, echoPins);
 }
 
-//test
 void EnemyDetection::distCallback(vector<float> distances) {
     /*directionsSum = 0;
     for(int i=0; i<distances.size(); i++) { //for every distance
