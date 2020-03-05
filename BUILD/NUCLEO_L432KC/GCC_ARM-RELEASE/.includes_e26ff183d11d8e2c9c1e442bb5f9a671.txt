@@ -1,1 +1,0 @@
--I. -I./EnemyDetection -I./EnemyDetection/UltrasonicArray -I./LineDetection -I./Moving -I./mbed -I./mbed/TARGET_NUCLEO_L432KC/TOOLCHAIN_GCC_ARM -I./mbed/drivers -I./mbed/hal -I./mbed/platform
