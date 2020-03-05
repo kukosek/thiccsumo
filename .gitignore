@@ -3,3 +3,5 @@
 /.mbed
 /BUILD/
 /GettingStarted.html
+/mbed_settings.py
+/mbed_settings.pyc
