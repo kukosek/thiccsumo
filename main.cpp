@@ -2,10 +2,11 @@
 #include <math.h> //floor()
 #include "Moving.h"
 #include "LineDetection.h"
+#include "EnemyDetection.h"
 DigitalOut myled(LED1);
 Moving robotMove;
 LineDetection line;
-
+EnemyDetection enemyDetection;
 uint8_t STANDBY=0;
 uint8_t INIT=1;
 uint8_t SCAN=2;
@@ -189,19 +190,26 @@ class LineFoundMoves {
         }
 };
 
+int enemyPos;
+void processEnemyPos(bool enemyFound, int8_t enemyPosition) {
+    if (enemyFound){
+        enemyPos = enemyPosition;
+    }
+}
+
 int main() {
     line.setGroundColor();
+    enemyDetection.startDetecting(&processEnemyPos);
     while(1) {
         if (state!=STANDBY){
             if (line.isOnLine()){
                 setState(LINE);
             }
-            
+
             if (state==INIT){
                 setState(SCAN);   
             }else if (state==SCAN){
-                robotMove.setMoveDirection(-100,false);
-                robotMove.setMoveSpeed(20);
+                
             }
         }
     }

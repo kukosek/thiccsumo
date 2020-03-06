@@ -6,9 +6,12 @@
 class EnemyDetection {
 public:
     EnemyDetection();
-    void startDetecting();
-private:
+    void startDetecting(void (*callbackFunc)(bool, int8_t));
     UltrasonicArray* ultraArray;
+    void stopDetecting();
+private:
+    
+    static void (*mEnemyPosCallback)(bool, int8_t);
     static void distCallback(vector<float> distances);
 };
 #endif

@@ -20,6 +20,9 @@ public:
     void setFirstModule(uint8_t moduleIndex);
     bool nextModuleStartToRight;
     float speedOfSound;
+
+    //debug
+    int csdSize;
 private:
     struct ultrasonicModule;
     vector<ultrasonicModule> ultrasonicModules;
@@ -51,5 +54,7 @@ private:
     vector<float> currentScanDistances;
     Timeout waitAfterEchoFall;
     void echoFall();
+
+    
 };
 #endif

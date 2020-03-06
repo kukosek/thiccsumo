@@ -14,6 +14,7 @@ UltrasonicArray::UltrasonicArray(){
     nextModuleStartToRight = false;
     speedOfSound = 0.0343; //speed of sound in cm/µs
     //runtime variables, do not edit
+    attachedPingCb = false;
     scanning = false;
     repeatedlyScanning = false;
     singlePingActive = false;
@@ -100,7 +101,7 @@ uint8_t UltrasonicArray::getNextModuleIndexToPing(){
                     moduleIndexToReturn = firstModuleToPing-distFromStartModule;
                     nextModuleRight = !nextModuleRight;
                 }else{
-                    (*mCallbackFunc)(currentScanDistances);
+                    //(*mCallbackFunc)(currentScanDistances);
                     resetScanVars();
                     return firstModuleToPing;
                 }
@@ -113,7 +114,7 @@ uint8_t UltrasonicArray::getNextModuleIndexToPing(){
                     moduleIndexToReturn = firstModuleToPing+distFromStartModule;
                     nextModuleRight = !nextModuleRight;
                 }else{
-                    (*mCallbackFunc)(currentScanDistances);
+                    //(*mCallbackFunc)(currentScanDistances);
                     resetScanVars();
                     return firstModuleToPing;
                 }
@@ -150,6 +151,8 @@ void UltrasonicArray::echoRise() {
 void UltrasonicArray::echoFall() {
     if(scanning){
         echoTimer.stop();
+
+        csdSize = currentScanDistances.size();
 
         int time = echoTimer.read_us();
         echoTimer.reset();  
