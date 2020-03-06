@@ -23,7 +23,9 @@ EnemyDetection::EnemyDetection(){
 void EnemyDetection::distCallback(vector<float> distances) {
     bool enemyDetected = false;
     float directionsSum = 0;
+    printf("%f\r\n",distances[1]);
     for(uint8_t i=0; i<distances.size(); i++) { //for every distance
+        
         if (distances[i] > DIST_GREATERTHAN_CM and distances[i] < DIST_LESSTHAN_CM){
             enemyDetected = true;
             directionsSum += (i-CENTER_DIST_INDEX) / (distances.size()-1-CENTER_DIST_INDEX) * RIGHT_DIST_DIR;

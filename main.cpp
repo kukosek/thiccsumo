@@ -191,7 +191,9 @@ class LineFoundMoves {
 };
 
 int enemyPos;
+bool enemFound = false;
 void processEnemyPos(bool enemyFound, int8_t enemyPosition) {
+    enemFound = enemyFound;
     if (enemyFound){
         enemyPos = enemyPosition;
     }

@@ -5,12 +5,12 @@
 #define TRIGGERHIGH_TIME_US 10
 #define ULTRASONIC_TIMEOUT_US 38000
 #define ULTRASONIC_TIMEOUT_TOLERANCE_US 1000
-#define ULTRASONIC_WAIT_AFTER_ECHO_US 10000
+#define ULTRASONIC_WAIT_AFTER_ECHO_US 100000
 
 //constructor without parameters. the modules are set up in setModules()
 UltrasonicArray::UltrasonicArray(){
     //configuration
-    firstModuleToPing=0;
+    firstModuleToPing=1;
     nextModuleStartToRight = false;
     speedOfSound = 0.0343; //speed of sound in cm/µs
     //runtime variables, do not edit
@@ -88,12 +88,11 @@ example: mNumberOfModules = 9, firstModuleToPing = 4, nextModuleStartToRight = f
 */
 uint8_t UltrasonicArray::getNextModuleIndexToPing(){
     if (distFromStartModule == 0) {
-        return firstModuleToPing;
-
         distFromStartModule++;
+        return firstModuleToPing;
     }else{
         uint8_t moduleIndexToReturn;
-        if(nextModuleRight){
+        if(nextModuleRight == true){
             if (firstModuleToPing+distFromStartModule < mNumberOfModules){
                moduleIndexToReturn = firstModuleToPing+distFromStartModule;
             }else{
@@ -101,7 +100,7 @@ uint8_t UltrasonicArray::getNextModuleIndexToPing(){
                     moduleIndexToReturn = firstModuleToPing-distFromStartModule;
                     nextModuleRight = !nextModuleRight;
                 }else{
-                    //(*mCallbackFunc)(currentScanDistances);
+                    (*mCallbackFunc)(currentScanDistances);
                     resetScanVars();
                     return firstModuleToPing;
                 }
@@ -114,7 +113,7 @@ uint8_t UltrasonicArray::getNextModuleIndexToPing(){
                     moduleIndexToReturn = firstModuleToPing+distFromStartModule;
                     nextModuleRight = !nextModuleRight;
                 }else{
-                    //(*mCallbackFunc)(currentScanDistances);
+                    (*mCallbackFunc)(currentScanDistances);
                     resetScanVars();
                     return firstModuleToPing;
                 }
