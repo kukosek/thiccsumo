@@ -5,12 +5,12 @@
 #define TRIGGERHIGH_TIME_US 10
 #define ULTRASONIC_TIMEOUT_US 38000
 #define ULTRASONIC_TIMEOUT_TOLERANCE_US 1000
-#define ULTRASONIC_WAIT_AFTER_ECHO_US 100000
+#define ULTRASONIC_WAIT_AFTER_ECHO_US 50000
 
 //constructor without parameters. the modules are set up in setModules()
 UltrasonicArray::UltrasonicArray(){
     //configuration
-    firstModuleToPing=1;
+    firstModuleToPing=0;
     nextModuleStartToRight = false;
     speedOfSound = 0.0343; //speed of sound in cm/µs
     //runtime variables, do not edit
