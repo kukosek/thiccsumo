@@ -5,7 +5,7 @@
 #define TRIGGERHIGH_TIME_US 10
 #define ULTRASONIC_TIMEOUT_US 38000
 #define ULTRASONIC_TIMEOUT_TOLERANCE_US 1000
-#define ULTRASONIC_WAIT_AFTER_ECHO_US 50000
+#define ULTRASONIC_WAIT_AFTER_ECHO_US 100000
 
 //constructor without parameters. the modules are set up in setModules()
 UltrasonicArray::UltrasonicArray(){

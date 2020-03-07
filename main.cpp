@@ -7,22 +7,78 @@ DigitalOut myled(LED1);
 Moving robotMove;
 LineDetection line;
 EnemyDetection enemyDetection;
-uint8_t STANDBY=0;
-uint8_t INIT=1;
-uint8_t SCAN=2;
-uint8_t LINE=4;
-int state = INIT;
-void setState(uint8_t stateToSet){
-    if (stateToSet==STANDBY){
-        robotMove.disableMotors();
-        state=stateToSet;
-    }else if (stateToSet==INIT){
-        robotMove.enableMotors();
-        state=stateToSet;
-    }else if (stateToSet==SCAN){
-        robotMove.setMoveDirection(0,false);
-        robotMove.setMoveSpeed(20);
-        state=stateToSet;
+
+/*Replacing button - later attaching a function
+that changes the state to STANDBY/INIT when
+pressing a key on PC */
+RawSerial pc(USBTX, USBRX);
+
+enum states {
+    STANDBY,
+    INIT,
+    AIMING,
+    SCAN,
+    LINE,
+
+    NONE
+};
+enum states state;
+enum states interruptedNewState = NONE;
+
+/* state AIMING - PID runtime and config variables */
+//PID config
+#define AIMING_Kp 0.8
+#define AIMING_Kd 0.5
+#define AIMING_IntendedEnemyPos 0
+#define AIMING_RotationDirection 100
+//PID runtime vars
+uint8_t lastError = 0;
+
+void processEnemyPos(bool enemyFound, int8_t enemyPosition) {
+    switch (state) {
+        case AIMING:{
+            uint8_t error = enemyPosition-AIMING_IntendedEnemyPos;
+            if (enemyPosition>0) {
+                robotMove.setMoveDirection(AIMING_RotationDirection, false);
+            }else if(enemyPosition<0) {
+                robotMove.setMoveDirection(-AIMING_RotationDirection, false);
+            }
+            uint8_t result = (abs(error)*AIMING_Kp) + abs(error-lastError)*AIMING_Kd;
+            printf("%d --> %d\r\n",enemyPosition, result);
+            if (result<=100){
+                robotMove.setMoveSpeed(result);
+            }else if (result>100) {
+                robotMove.setMoveSpeed(100);
+            }
+            lastError = error;
+            break;
+        }
+    }
+}
+
+void setState(enum states stateToSet){
+    switch(stateToSet) {
+        case STANDBY:{
+            robotMove.disableMotors();
+            enemyDetection.stopDetecting();
+            state=stateToSet;
+            break;
+        }
+        case INIT: {
+            robotMove.enableMotors();
+            enemyDetection.startDetecting(&processEnemyPos);
+            state=stateToSet;
+            break;
+        }
+        case SCAN: {
+            robotMove.setMoveDirection(0,false);
+            robotMove.setMoveSpeed(20);
+            state=stateToSet;
+            break;
+        }
+        default: {
+            state=stateToSet;
+        }
     }
 }
 
@@ -50,6 +106,8 @@ class LineFoundMoves {
             rotatingDirectionIncreasePerDeciSecond=10;
             rotatingIntendedDirection=100;
             rotatingSeconds=1.0;
+
+            stateAfterFinnish = AIMING;
         }
 
         void startMoves(int8_t lineFoundPos){
@@ -184,35 +242,57 @@ class LineFoundMoves {
         uint8_t rotatingIntendedSpeed;
         float rotatingSeconds;
 
+        enum states stateAfterFinnish; 
         void finishMoves(){
             actionTimeout.detach();
-            setState(SCAN);
+            interruptedNewState = stateAfterFinnish;
         }
 };
 
-int enemyPos;
-bool enemFound = false;
-void processEnemyPos(bool enemyFound, int8_t enemyPosition) {
-    enemFound = enemyFound;
-    if (enemyFound){
-        enemyPos = enemyPosition;
-        printf("%d\r\n\n", enemyPos);
+void button(){
+    pc.putc(pc.getc());
+    if (state == STANDBY){
+        printf("starting");  
+        interruptedNewState = INIT;
+    }else{
+        printf("standby");
+        interruptedNewState = STANDBY;
     }
 }
 
 int main() {
+     printf("Main start\r\n");
+
+    pc.attach(&button);
+
     line.setGroundColor();
-    enemyDetection.startDetecting(&processEnemyPos);
+    
+    setState(INIT);
     while(1) {
-        if (state!=STANDBY){
-            if (line.isOnLine()){
+        if (interruptedNewState != NONE) {
+            setState(interruptedNewState);
+            interruptedNewState = NONE;
+        }
+
+        if (state != STANDBY){
+            if (line.isOnLine() and state != LINE){
                 setState(LINE);
             }
-
-            if (state==INIT){
-                setState(SCAN);   
-            }else if (state==SCAN){
-                
+            switch (state) {
+                case INIT: {
+                    setState(AIMING);
+                    break;
+                }
+                case LINE:{
+                    
+                    break;
+                }  
+                case SCAN:{
+                    break;
+                }
+                default: {
+                    
+                }
             }
         }
     }

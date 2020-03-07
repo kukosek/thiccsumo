@@ -25,6 +25,7 @@ void EnemyDetection::distCallback(vector<float> distances) {
     bool enemyDetected = false;
     float directionsSum = 0;
     uint8_t numberOfDirections = 0;
+    printf("%f\r\n\r\n", distances[2]);
     for(uint8_t i=0; i<NUMBER_OF_MODULES; i++) { //for every distance
         
         if (distances[i] > DIST_GREATERTHAN_CM and distances[i] < DIST_LESSTHAN_CM){
