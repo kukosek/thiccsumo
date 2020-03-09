@@ -1,5 +1,7 @@
 #include "Moving.h"
 #include "mbed.h"
+
+#define minRotatingSpeed 15
 void Moving::enableMotors(){
     //some IO to enable your motor drivers or something
 }
@@ -145,7 +147,7 @@ void Moving::setMotorIO(){
                 right2->write(0.0f);
                 
                 right1->write(mSpeed/100);
-                float pulsewidth= (abs(mDirection)*(mSpeed/100))/100;
+                float pulsewidth= (abs(mDirection)*(mSpeed/100))/100; //100*0.2
                 if (pulsewidth>=0){
                     left1->write(pulsewidth);
                 }else{
@@ -169,7 +171,11 @@ void Moving::setMotorIO(){
 }
 
 void Moving::setMoveSpeed(uint8_t speed) { //speed is percentual (0-100)
-    mSpeed=speed;
+    if (speed>0){
+        mSpeed= (speed - 0) * (100 - minRotatingSpeed) / (100 - 0) + minRotatingSpeed;
+    }else{
+        mSpeed = 0;
+    }
     Moving::setMotorIO();
 }
 

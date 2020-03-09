@@ -27,23 +27,28 @@ enum states interruptedNewState = NONE;
 
 /* state AIMING - PID runtime and config variables */
 //PID config
-#define AIMING_Kp 0.8
-#define AIMING_Kd 0.5
+#define AIMING_Kp 0.2
+#define AIMING_Kd 0
 #define AIMING_IntendedEnemyPos 0
 #define AIMING_RotationDirection 100
 //PID runtime vars
-uint8_t lastError = 0;
+int8_t lastError = 0;
 
 void processEnemyPos(bool enemyFound, int8_t enemyPosition) {
     switch (state) {
         case AIMING:{
-            uint8_t error = enemyPosition-AIMING_IntendedEnemyPos;
+            int8_t error = enemyPosition-AIMING_IntendedEnemyPos;
             if (enemyPosition>0) {
                 robotMove.setMoveDirection(AIMING_RotationDirection, false);
             }else if(enemyPosition<0) {
                 robotMove.setMoveDirection(-AIMING_RotationDirection, false);
             }
-            uint8_t result = (abs(error)*AIMING_Kp) + abs(error-lastError)*AIMING_Kd;
+            uint8_t result = (abs(error)*AIMING_Kp) + abs(error-lastError)*AIMING_Kd; 
+            /*
+            -40=172
+            40*0.8 +
+
+            */
             printf("%d --> %d\r\n",enemyPosition, result);
             if (result<=100){
                 robotMove.setMoveSpeed(result);
@@ -65,6 +70,7 @@ void setState(enum states stateToSet){
             break;
         }
         case INIT: {
+            line.setGroundColor();
             robotMove.enableMotors();
             enemyDetection.startDetecting(&processEnemyPos);
             state=stateToSet;
@@ -261,11 +267,10 @@ void button(){
 }
 
 int main() {
-     printf("Main start\r\n");
+    printf("Main start\r\n");
 
     pc.attach(&button);
 
-    line.setGroundColor();
     
     setState(INIT);
     while(1) {
