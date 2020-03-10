@@ -3,16 +3,13 @@
 #include "Moving.h"
 #include "LineDetection.h"
 #include "EnemyDetection.h"
+
+
+
 DigitalOut myled(LED1);
 Moving robotMove;
 LineDetection line;
 EnemyDetection enemyDetection;
-
-/*Replacing button - later attaching a function
-that changes the state to STANDBY/INIT when
-pressing a key on PC */
-RawSerial pc(USBTX, USBRX);
-
 enum states {
     STANDBY,
     INIT,
@@ -22,8 +19,198 @@ enum states {
 
     NONE
 };
-enum states state;
 enum states interruptedNewState = NONE;
+
+class LineFoundMoves {
+    public:
+        bool goingBackwardsSmooth;
+        bool rotatingSmooth;
+        LineFoundMoves();
+
+        void startMoves(int8_t lineFoundPos);
+        
+        bool smoothUpdate();
+        void stopMoves();
+        
+        
+    private:
+        Timeout actionTimeout;
+        Timer smoothIncreaseTimer;
+
+        bool moveState; //state variable used in smoothUpdate() 
+        bool GOINGBACKWARDS; //like an enum
+        bool ROTATING;  //like an enum
+
+        void startGoingBackwards(int8_t lineFoundPos);
+
+        double preciseSpeed;
+        uint8_t lastAppliedSpeed;
+        
+        uint8_t savedLinePos;
+        float backwardsLinePosProportionalK;
+        float backwardsSpeedIncreasePerDeciSecond;
+        uint8_t goingBackwardsIntendedSpeed;
+        int8_t goingBackwardsIntendedDirection;
+        float goingBackwardsSeconds;
+        
+        void startRotating();
+
+        double preciseDirection;
+        uint8_t lastAppliedDirection;
+
+        double speedAtEndGoingBackwards;
+        float rotatingDirectionIncreasePerDeciSecond;
+        float rotatingSpeedIncreasePerDeciSecond;
+        int8_t rotatingIntendedDirection;
+        uint8_t rotatingIntendedSpeed;
+        float rotatingSeconds;
+
+        enum states stateAfterFinnish; 
+        void finishMoves();
+};
+
+LineFoundMoves::LineFoundMoves(void){
+    preciseSpeed=0.0;
+    lastAppliedSpeed=0;
+    GOINGBACKWARDS=true;
+    ROTATING=false;
+    moveState=GOINGBACKWARDS;
+
+    //configuration of move style
+    backwardsLinePosProportionalK=0.4;
+    goingBackwardsSmooth=false;
+    backwardsSpeedIncreasePerDeciSecond=5;
+    goingBackwardsIntendedSpeed=20;
+    goingBackwardsSeconds=1.0;
+    
+    rotatingSmooth=false;
+    rotatingSpeedIncreasePerDeciSecond=10;
+    rotatingIntendedSpeed=20;
+    rotatingDirectionIncreasePerDeciSecond=10;
+    rotatingIntendedDirection=100;
+    rotatingSeconds=1.0;
+
+    stateAfterFinnish = AIMING;
+}
+
+void LineFoundMoves::startMoves(int8_t lineFoundPos){
+    startGoingBackwards(lineFoundPos);
+}
+
+bool LineFoundMoves::smoothUpdate() { //updates and returns true if there is nothing to update
+    smoothIncreaseTimer.stop();
+    if(moveState == GOINGBACKWARDS){ //returns true if the intended speed has been reached               
+        double speedIncrease=rotatingSpeedIncreasePerDeciSecond*(smoothIncreaseTimer.read_us()*100000);
+        uint8_t roundedNewSpeed=floor(preciseSpeed+speedIncrease);
+        
+        if (roundedNewSpeed<=goingBackwardsIntendedSpeed){
+            preciseSpeed+=speedIncrease;
+            
+            if (lastAppliedSpeed!=roundedNewSpeed){ //check if this speed has been arleady applied to the motors
+                robotMove.setMoveSpeed(roundedNewSpeed);
+                lastAppliedSpeed=roundedNewSpeed;
+            }
+        }
+    }else if(moveState == ROTATING){
+        //Smooth speed update
+        double speedIncrease= rotatingSpeedIncreasePerDeciSecond*(smoothIncreaseTimer.read_us()*100000);
+        if (rotatingIntendedSpeed<speedAtEndGoingBackwards){
+            speedIncrease=-speedIncrease;
+        }
+        uint8_t roundedNewSpeed=floor(preciseSpeed+speedIncrease);
+        
+        bool intendedSpeedReached;
+        if ( //if we didn't reach the intended speed
+        (rotatingIntendedSpeed > goingBackwardsIntendedSpeed and roundedNewSpeed<=goingBackwardsIntendedSpeed)
+        or
+        (rotatingIntendedSpeed < goingBackwardsIntendedSpeed and roundedNewSpeed>=goingBackwardsIntendedSpeed)){
+            preciseSpeed+=speedIncrease;
+            
+            if (lastAppliedSpeed!=roundedNewSpeed){ //check if this speed has been already applied to the motors
+                robotMove.setMoveSpeed(roundedNewSpeed);
+                lastAppliedSpeed=roundedNewSpeed;
+            }
+            intendedSpeedReached = false;
+        }else{
+            intendedSpeedReached = true;
+        }
+
+
+        //Smooth direction update
+        double directionIncrease= rotatingDirectionIncreasePerDeciSecond*(smoothIncreaseTimer.read_us()*100000);
+        if (rotatingIntendedDirection < goingBackwardsIntendedDirection){
+            directionIncrease=-directionIncrease;
+        }
+        uint8_t roundedNewDirection=floor(preciseDirection+directionIncrease);
+
+        bool intendedDirectionReached;
+        if ( // if we didn't reach the intended direction
+        (rotatingIntendedDirection > goingBackwardsIntendedDirection and roundedNewDirection<=goingBackwardsIntendedDirection)
+        or
+        (rotatingIntendedDirection < goingBackwardsIntendedDirection and roundedNewDirection>=goingBackwardsIntendedDirection)){
+            preciseDirection+=directionIncrease;
+            
+            if (lastAppliedDirection!= roundedNewDirection){ //check if this direction has been arleady applied to the motors
+                robotMove.setMoveDirection(roundedNewDirection, true);
+                lastAppliedDirection=roundedNewDirection;
+            }
+            intendedDirectionReached = false;
+        }else{
+            intendedDirectionReached = true;
+        }
+
+        if(intendedSpeedReached and intendedDirectionReached){
+            return true;
+        }
+    }
+    smoothIncreaseTimer.reset();
+    smoothIncreaseTimer.start();
+    return false;
+}
+
+void LineFoundMoves::stopMoves() {
+    actionTimeout.detach();
+}
+
+//private class funcs
+void LineFoundMoves::startGoingBackwards(int8_t lineFoundPos){
+    savedLinePos=lineFoundPos;
+    goingBackwardsIntendedDirection=floor(-lineFoundPos*backwardsLinePosProportionalK);
+    robotMove.setMoveDirection(goingBackwardsIntendedDirection,true);
+    if (goingBackwardsSmooth){
+        robotMove.setMoveSpeed(0);
+        smoothIncreaseTimer.start();
+    }else{
+        robotMove.setMoveSpeed(goingBackwardsIntendedSpeed);
+    }
+    actionTimeout.attach(callback(this, &LineFoundMoves::startRotating),goingBackwardsSeconds);
+    
+}
+
+void LineFoundMoves::startRotating(){
+    speedAtEndGoingBackwards=preciseSpeed;
+    actionTimeout.attach(callback(this, &LineFoundMoves::finishMoves),rotatingSeconds);
+    if (rotatingSmooth){
+        smoothIncreaseTimer.start();
+    }else{
+        robotMove.setMoveDirection(rotatingIntendedDirection, false);
+        robotMove.setMoveSpeed(rotatingIntendedSpeed);
+    }
+}
+
+void LineFoundMoves::finishMoves(){
+    actionTimeout.detach();
+    interruptedNewState = stateAfterFinnish;
+}
+
+LineFoundMoves lineFoundMoves;
+
+/*Replacing button - later attaching a function
+that changes the state to STANDBY/INIT when
+pressing a key on PC */
+
+enum states state;
+
 
 /* state AIMING - PID runtime and config variables */
 //PID config
@@ -35,6 +222,7 @@ enum states interruptedNewState = NONE;
 int8_t lastError = 0;
 
 void processEnemyPos(bool enemyFound, int8_t enemyPosition) {
+    printf("pEP, %d %d",enemyFound,enemyPosition);
     switch (state) {
         case AIMING:{
             int8_t error = enemyPosition-AIMING_IntendedEnemyPos;
@@ -76,6 +264,9 @@ void setState(enum states stateToSet){
             state=stateToSet;
             break;
         }
+        case LINE: {
+            lineFoundMoves.startMoves(line.getLinePos());
+        }
         case SCAN: {
             robotMove.setMoveDirection(0,false);
             robotMove.setMoveSpeed(20);
@@ -88,175 +279,10 @@ void setState(enum states stateToSet){
     }
 }
 
-class LineFoundMoves {
-    public:
-        bool goingBackwardsSmooth;
-        bool rotatingSmooth;
-        LineFoundMoves(){
-            preciseSpeed=0.0;
-            lastAppliedSpeed=0;
-            GOINGBACKWARDS=true;
-            ROTATING=false;
-            moveState=GOINGBACKWARDS;
 
-            //configuration of move style
-            backwardsLinePosProportionalK=0.4;
-            goingBackwardsSmooth=false;
-            backwardsSpeedIncreasePerDeciSecond=5;
-            goingBackwardsIntendedSpeed=20;
-            goingBackwardsSeconds=1.0;
-            
-            rotatingSmooth=false;
-            rotatingSpeedIncreasePerDeciSecond=10;
-            rotatingIntendedSpeed=20;
-            rotatingDirectionIncreasePerDeciSecond=10;
-            rotatingIntendedDirection=100;
-            rotatingSeconds=1.0;
-
-            stateAfterFinnish = AIMING;
-        }
-
-        void startMoves(int8_t lineFoundPos){
-            startGoingBackwards(lineFoundPos);
-        }
-        
-        bool smoothUpdate(){ //updates and returns true if there is nothing to update
-            smoothIncreaseTimer.stop();
-            if(moveState == GOINGBACKWARDS){ //returns true if the intended speed has been reached               
-                double speedIncrease=rotatingSpeedIncreasePerDeciSecond*(smoothIncreaseTimer.read_us()*100000);
-                uint8_t roundedNewSpeed=floor(preciseSpeed+speedIncrease);
-                
-                if (roundedNewSpeed<=goingBackwardsIntendedSpeed){
-                    preciseSpeed+=speedIncrease;
-                    
-                    if (lastAppliedSpeed!=roundedNewSpeed){ //check if this speed has been arleady applied to the motors
-                        robotMove.setMoveSpeed(roundedNewSpeed);
-                        lastAppliedSpeed=roundedNewSpeed;
-                    }
-                }
-            }else if(moveState == ROTATING){
-                //Smooth speed update
-                double speedIncrease= rotatingSpeedIncreasePerDeciSecond*(smoothIncreaseTimer.read_us()*100000);
-                if (rotatingIntendedSpeed<speedAtEndGoingBackwards){
-                    speedIncrease=-speedIncrease;
-                }
-                uint8_t roundedNewSpeed=floor(preciseSpeed+speedIncrease);
-                
-                bool intendedSpeedReached;
-                if ( //if we didn't reach the intended speed
-                (rotatingIntendedSpeed > goingBackwardsIntendedSpeed and roundedNewSpeed<=goingBackwardsIntendedSpeed)
-                or
-                (rotatingIntendedSpeed < goingBackwardsIntendedSpeed and roundedNewSpeed>=goingBackwardsIntendedSpeed)){
-                    preciseSpeed+=speedIncrease;
-                    
-                    if (lastAppliedSpeed!=roundedNewSpeed){ //check if this speed has been already applied to the motors
-                        robotMove.setMoveSpeed(roundedNewSpeed);
-                        lastAppliedSpeed=roundedNewSpeed;
-                    }
-                    intendedSpeedReached = false;
-                }else{
-                    intendedSpeedReached = true;
-                }
-
-
-                //Smooth direction update
-                double directionIncrease= rotatingDirectionIncreasePerDeciSecond*(smoothIncreaseTimer.read_us()*100000);
-                if (rotatingIntendedDirection < goingBackwardsIntendedDirection){
-                    directionIncrease=-directionIncrease;
-                }
-                uint8_t roundedNewDirection=floor(preciseDirection+directionIncrease);
-
-                bool intendedDirectionReached;
-                if ( // if we didn't reach the intended direction
-                (rotatingIntendedDirection > goingBackwardsIntendedDirection and roundedNewDirection<=goingBackwardsIntendedDirection)
-                or
-                (rotatingIntendedDirection < goingBackwardsIntendedDirection and roundedNewDirection>=goingBackwardsIntendedDirection)){
-                    preciseDirection+=directionIncrease;
-                    
-                    if (lastAppliedDirection!= roundedNewDirection){ //check if this direction has been arleady applied to the motors
-                        robotMove.setMoveDirection(roundedNewDirection, true);
-                        lastAppliedDirection=roundedNewDirection;
-                    }
-                    intendedDirectionReached = false;
-                }else{
-                    intendedDirectionReached = true;
-                }
-
-                if(intendedSpeedReached and intendedDirectionReached){
-                    return true;
-                }
-            }
-            smoothIncreaseTimer.reset();
-            smoothIncreaseTimer.start();
-            return false;
-        }
-        void stopMoves(){
-            actionTimeout.detach();
-        }
-        
-        
-    private:
-        Timeout actionTimeout;
-        Timer smoothIncreaseTimer;
-
-        bool moveState; //state variable used in smoothUpdate() 
-        bool GOINGBACKWARDS; //like an enum
-        bool ROTATING;  //like an enum
-
-        void startGoingBackwards(int8_t lineFoundPos){
-            savedLinePos=lineFoundPos;
-            goingBackwardsIntendedDirection=floor(-lineFoundPos*backwardsLinePosProportionalK);
-            robotMove.setMoveDirection(goingBackwardsIntendedDirection,true);
-            if (goingBackwardsSmooth){
-                robotMove.setMoveSpeed(0);
-                smoothIncreaseTimer.start();
-            }else{
-                robotMove.setMoveSpeed(goingBackwardsIntendedSpeed);
-            }
-            actionTimeout.attach(callback(this, &LineFoundMoves::startRotating),goingBackwardsSeconds);
-            
-        }
-
-        double preciseSpeed;
-        uint8_t lastAppliedSpeed;
-        
-        uint8_t savedLinePos;
-        float backwardsLinePosProportionalK;
-        float backwardsSpeedIncreasePerDeciSecond;
-        uint8_t goingBackwardsIntendedSpeed;
-        int8_t goingBackwardsIntendedDirection;
-        float goingBackwardsSeconds;
-        
-        void startRotating(){
-            speedAtEndGoingBackwards=preciseSpeed;
-            actionTimeout.attach(callback(this, &LineFoundMoves::finishMoves),rotatingSeconds);
-            if (rotatingSmooth){
-                smoothIncreaseTimer.start();
-            }else{
-                robotMove.setMoveDirection(rotatingIntendedDirection, false);
-                robotMove.setMoveSpeed(rotatingIntendedSpeed);
-            }
-        }
-
-        double preciseDirection;
-        uint8_t lastAppliedDirection;
-
-        double speedAtEndGoingBackwards;
-        float rotatingDirectionIncreasePerDeciSecond;
-        float rotatingSpeedIncreasePerDeciSecond;
-        int8_t rotatingIntendedDirection;
-        uint8_t rotatingIntendedSpeed;
-        float rotatingSeconds;
-
-        enum states stateAfterFinnish; 
-        void finishMoves(){
-            actionTimeout.detach();
-            interruptedNewState = stateAfterFinnish;
-        }
-};
 
 void button(){
-    pc.putc(pc.getc());
+    //pc.putc(pc.getc());
     if (state == STANDBY){
         printf("starting");  
         interruptedNewState = INIT;
@@ -269,11 +295,13 @@ void button(){
 int main() {
     printf("Main start\r\n");
 
-    pc.attach(&button);
+    //pc.attach(&button);
 
     
-    setState(INIT);
-    while(1) {
+    //setState(INIT);
+    robotMove.setMoveSpeed(15);
+    robotMove.setMoveDirection(-30,true);
+    /*while(1) {
         if (interruptedNewState != NONE) {
             setState(interruptedNewState);
             interruptedNewState = NONE;
@@ -300,5 +328,5 @@ int main() {
                 }
             }
         }
-    }
+    }*/
 }
