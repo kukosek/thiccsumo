@@ -15,7 +15,7 @@ enum states {
     INIT,
     AIMING,
     SCAN,
-    LINE,
+    LINE_ON_LINE;
 
     NONE
 };
@@ -262,7 +262,7 @@ void setState(enum states stateToSet){
             state=stateToSet;
             break;
         }
-        case LINE: {
+        case LINE_AFTER: {
             state=stateToSet;
             lineFoundMoves.startMoves(line.getLinePos());
             break;
@@ -304,15 +304,15 @@ int main() {
         }
 
         if (state != STANDBY){
-            if (line.isOnLine() and state != LINE){
-                setState(LINE);
+            if (line.isOnLine() and state != LINE_AFTER){
+                setState(LINE_AFTER);
             }
             switch (state) {
                 case INIT: {
                     setState(AIMING);
                     break;
                 }
-                case LINE:{
+                case LINE_AFTER:{
                     
                     break;
                 }  
