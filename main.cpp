@@ -298,10 +298,8 @@ int main() {
     //pc.attach(&button);
 
     
-    //setState(INIT);
-    robotMove.setMoveSpeed(15);
-    robotMove.setMoveDirection(-30,true);
-    /*while(1) {
+    setState(INIT);
+    while(1) {
         if (interruptedNewState != NONE) {
             setState(interruptedNewState);
             interruptedNewState = NONE;
@@ -328,5 +326,5 @@ int main() {
                 }
             }
         }
-    }*/
+    }
 }

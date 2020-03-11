@@ -39,10 +39,10 @@ void Moving::initMotorIO(){
 void Moving::setMotorIO(){
     if (mBackwards){
         if (mDirection==0){ //going STRAIGHT BACKWARDS
-            left2->write(0.0f);
-            right1->write(0.0f);
-            left1->write(mSpeed/100);
-            right2->write(mSpeed/100);
+            left1->write(0.0f);
+            right2->write(0.0f);
+            left2->write(mSpeed/100);
+            right1->write(mSpeed/100);
             
             
         }else if(mDirection>0){ //Turning RIGHT BACKWARDS
@@ -73,8 +73,7 @@ void Moving::setMotorIO(){
             
         
         }else if(mDirection<0){ //turning LEFT BACKWARDS
-            left2->write(mSpeed/100);
-            right1->write(mSpeed/100);
+            
             
             if (mDirection<-50){
                 left1->write(0.0f);
@@ -91,7 +90,7 @@ void Moving::setMotorIO(){
                 left2->write(0.0f);
                 right1->write(0.0f);
                 
-                right1->write(mSpeed/100);
+                right2->write(mSpeed/100);
                 
                 float pulsewidth=(mSpeed-(abs(mDirection)*(mSpeed/50)))/100;
                 if (pulsewidth>=0){
