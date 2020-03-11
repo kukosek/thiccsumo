@@ -77,7 +77,7 @@ LineFoundMoves::LineFoundMoves(void){
     moveState=GOINGBACKWARDS;
 
     //configuration of move style
-    backwardsLinePosProportionalK=0.4;
+    backwardsLinePosProportionalK=0.15;
     goingBackwardsSmooth=false;
     backwardsSpeedIncreasePerDeciSecond=5;
     goingBackwardsIntendedSpeed=20;
@@ -176,6 +176,7 @@ void LineFoundMoves::stopMoves() {
 void LineFoundMoves::startGoingBackwards(int8_t lineFoundPos){
     savedLinePos=lineFoundPos;
     goingBackwardsIntendedDirection=floor(-lineFoundPos*backwardsLinePosProportionalK);
+    printf("%d\r\n",goingBackwardsIntendedDirection);
     robotMove.setMoveDirection(goingBackwardsIntendedDirection,true);
     if (goingBackwardsSmooth){
         robotMove.setMoveSpeed(0);
@@ -208,6 +209,7 @@ LineFoundMoves lineFoundMoves;
 /*Replacing button - later attaching a function
 that changes the state to STANDBY/INIT when
 pressing a key on PC */
+RawSerial pc(USBTX, USBRX);
 
 enum states state;
 
@@ -222,7 +224,6 @@ enum states state;
 int8_t lastError = 0;
 
 void processEnemyPos(bool enemyFound, int8_t enemyPosition) {
-    printf("pEP, %d %d",enemyFound,enemyPosition);
     switch (state) {
         case AIMING:{
             int8_t error = enemyPosition-AIMING_IntendedEnemyPos;
@@ -232,11 +233,7 @@ void processEnemyPos(bool enemyFound, int8_t enemyPosition) {
                 robotMove.setMoveDirection(-AIMING_RotationDirection, false);
             }
             uint8_t result = (abs(error)*AIMING_Kp) + abs(error-lastError)*AIMING_Kd; 
-            /*
-            -40=172
-            40*0.8 +
-
-            */
+        
             printf("%d --> %d\r\n",enemyPosition, result);
             if (result<=100){
                 robotMove.setMoveSpeed(result);
@@ -253,6 +250,7 @@ void setState(enum states stateToSet){
     switch(stateToSet) {
         case STANDBY:{
             robotMove.disableMotors();
+            
             enemyDetection.stopDetecting();
             state=stateToSet;
             break;
@@ -265,7 +263,9 @@ void setState(enum states stateToSet){
             break;
         }
         case LINE: {
+            state=stateToSet;
             lineFoundMoves.startMoves(line.getLinePos());
+            break;
         }
         case SCAN: {
             robotMove.setMoveDirection(0,false);
@@ -282,12 +282,10 @@ void setState(enum states stateToSet){
 
 
 void button(){
-    //pc.putc(pc.getc());
-    if (state == STANDBY){
-        printf("starting");  
+    pc.putc(pc.getc());
+    if (state == STANDBY){ 
         interruptedNewState = INIT;
     }else{
-        printf("standby");
         interruptedNewState = STANDBY;
     }
 }
@@ -295,7 +293,7 @@ void button(){
 int main() {
     printf("Main start\r\n");
 
-    //pc.attach(&button);
+    pc.attach(&button);
 
     
     setState(INIT);

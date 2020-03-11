@@ -4,6 +4,7 @@
 #define minRotatingSpeed 15
 void Moving::enableMotors(){
     //some IO to enable your motor drivers or something
+    Moving::initMotorIO();
 }
 void Moving::disableMotors(){
     //some IO to disable your motor drivers or something
@@ -39,10 +40,10 @@ void Moving::initMotorIO(){
 void Moving::setMotorIO(){
     if (mBackwards){
         if (mDirection==0){ //going STRAIGHT BACKWARDS
-            left1->write(0.0f);
-            right2->write(0.0f);
-            left2->write(mSpeed/100);
-            right1->write(mSpeed/100);
+            left2->write(0.0f);
+            right1->write(0.0f);
+            left1->write(mSpeed/100);
+            right2->write(mSpeed/100);
             
             
         }else if(mDirection>0){ //Turning RIGHT BACKWARDS
@@ -76,27 +77,27 @@ void Moving::setMotorIO(){
             
             
             if (mDirection<-50){
-                left1->write(0.0f);
-                right1->write(0.0f);
+                left2->write(0.0f);
+                right2->write(0.0f);
                 
-                right2->write(mSpeed/100);
+                left1->write(mSpeed/100);
                 float pulsewidth= (abs(mDirection)*(mSpeed/100))/100;
                 if (pulsewidth>=0){
-                    left2->write(pulsewidth);
+                    right1->write(pulsewidth);
                 }else{
-                    left2->write(0.0f);
+                    right1->write(0.0f);
                 }
             }else{
                 left2->write(0.0f);
                 right1->write(0.0f);
                 
-                right2->write(mSpeed/100);
+                left1->write(mSpeed/100);
                 
                 float pulsewidth=(mSpeed-(abs(mDirection)*(mSpeed/50)))/100;
                 if (pulsewidth>=0){
-                    left1->write(pulsewidth);
+                    right2->write(pulsewidth);
                 }else{
-                    left1->write(0.0f);
+                    right2->write(0.0f);
                 }
             }
         }
@@ -138,9 +139,6 @@ void Moving::setMotorIO(){
             
         
         }else if(mDirection<0){ //turning LEFT
-            left2->write(mSpeed/100);
-            right1->write(mSpeed/100);
-            
             if (mDirection<-50){
                 left2->write(0.0f);
                 right2->write(0.0f);
@@ -183,7 +181,7 @@ void Moving::setMoveSpeed(uint8_t speed) { //speed is percentual (0-100)
 0 go straight,
 +50 only 
 100 rotating to the right*/
-void Moving::setMoveDirection(int8_t direction, bool backwards) { 
+void Moving::setMoveDirection(int8_t direction, bool backwards) {
     mDirection=direction;
     mBackwards=backwards; 
     Moving::setMotorIO();   

@@ -8,7 +8,7 @@
 #define RIGHT_DIST_DIR 40
 
 #define DIST_GREATERTHAN_CM 0
-#define DIST_LESSTHAN_CM 30
+#define DIST_LESSTHAN_CM 15
 
 void (*EnemyDetection::mEnemyPosCallback)(bool, int8_t);
 
