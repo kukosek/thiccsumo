@@ -15,7 +15,8 @@ enum states {
     INIT,
     AIMING,
     SCAN,
-    LINE_ON_LINE;
+    LINE_ON_LINE,
+    LINE_AFTER,
 
     NONE
 };
@@ -70,11 +71,10 @@ class LineFoundMoves {
 };
 
 LineFoundMoves::LineFoundMoves(void){
-    preciseSpeed=0.0;
-    lastAppliedSpeed=0;
+    
     GOINGBACKWARDS=true;
     ROTATING=false;
-    moveState=GOINGBACKWARDS;
+    
 
     //configuration of move style
     backwardsLinePosProportionalK=0.15;
@@ -94,6 +94,9 @@ LineFoundMoves::LineFoundMoves(void){
 }
 
 void LineFoundMoves::startMoves(int8_t lineFoundPos){
+    preciseSpeed=robotMove.mSpeed;
+    lastAppliedSpeed=robotMove.mSpeed;
+    moveState=GOINGBACKWARDS;
     startGoingBackwards(lineFoundPos);
 }
 
@@ -179,7 +182,7 @@ void LineFoundMoves::startGoingBackwards(int8_t lineFoundPos){
     printf("%d\r\n",goingBackwardsIntendedDirection);
     robotMove.setMoveDirection(goingBackwardsIntendedDirection,true);
     if (goingBackwardsSmooth){
-        robotMove.setMoveSpeed(0);
+        robotMove.setMoveSpeed(robotMove.mSpeed);
         smoothIncreaseTimer.start();
     }else{
         robotMove.setMoveSpeed(goingBackwardsIntendedSpeed);
@@ -262,9 +265,12 @@ void setState(enum states stateToSet){
             state=stateToSet;
             break;
         }
+        case LINE_ON_LINE:{
+            robotMove.setMoveDirection(0, true);
+            robotMove.setMoveSpeed(50);
+        }
         case LINE_AFTER: {
             state=stateToSet;
-            lineFoundMoves.startMoves(line.getLinePos());
             break;
         }
         case SCAN: {
@@ -289,7 +295,8 @@ void button(){
         interruptedNewState = STANDBY;
     }
 }
-
+bool lineInCenter;
+int8_t lastLinePos;
 int main() {
     printf("Main start\r\n");
 
@@ -304,12 +311,31 @@ int main() {
         }
 
         if (state != STANDBY){
-            if (line.isOnLine() and state != LINE_AFTER){
-                setState(LINE_AFTER);
+            if (line.isOnLine() and state != LINE_ON_LINE){
+                setState(LINE_ON_LINE);
             }
             switch (state) {
                 case INIT: {
                     setState(AIMING);
+                    break;
+                }
+                case LINE_ON_LINE:{
+                    if (!line.isOnLine()){
+                        if (lineInCenter){
+                            lineFoundMoves.startMoves(0);
+                        }else{
+                            lineFoundMoves.startMoves(lastLinePos);
+                        }
+                        lineInCenter = false;
+                        lastLinePos=0;
+                        setState(LINE_AFTER);
+                    }else{
+                        int8_t lnPos = line.getLinePos(); 
+                        if (lnPos==0){
+                            lineInCenter=true;
+                        }
+                        lastLinePos = lnPos;
+                    }
                     break;
                 }
                 case LINE_AFTER:{

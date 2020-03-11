@@ -11,6 +11,11 @@ public:
     void setMoveSpeed(uint8_t speed); //speed is percents ( 0 - 100 )
     void enableMotors();
     void disableMotors();
+
+    //class variables where the entered parameters are saved
+    float mSpeed;
+    int8_t mDirection;
+    bool mBackwards;
 private:
     //EDIT THESE variables for initMotorIO, setMotorIO
     PwmOut* left1;
@@ -19,10 +24,7 @@ private:
     PwmOut* right2;
     
     
-    //local class variables where the entered parameters are saved
-    float mSpeed;
-    int8_t mDirection;
-    bool mBackwards;
+    
     
     void initMotorIO(); //called in the constructor
     void setMotorIO(); //this function gets called when you set move speed or direction
